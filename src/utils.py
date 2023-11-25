@@ -13,32 +13,53 @@ import numpy as np
 from pprint import pprint
 
 MODEL_DICT = {
+    # ================== HUGGINGFACE MODELS ==================
     'bert': {
         'pretrained_model': 'yoshitomo-matsubara/bert-large-uncased-sst2',
-        'attention_param_name': 'attentions'
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
     },
     'distilbert': {
         'pretrained_model': 'distilbert-base-uncased-finetuned-sst-2-english',
-        'attention_param_name': 'attentions'
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
     },
     'bart': {
         'pretrained_model': 'valhalla/bart-large-sst2',
+        # 'pretrained_model': 'facebook/bart-large-mnli',
         # All BART attentions: ['decoder_attentions', 'cross_attentions', 'encoder_attentions']
         # Decoder attention is BAD. Use either encoder or cross.
         # 'attention_param_name': 'decoder_attentions'
-        'attention_param_name': 'cross_attentions'
-        # 'attention_param_name': 'encoder_attentions'
+        # 'attention_param_name': 'cross_attentions'
+        'attention_param_name': 'cross_attentions',
+        'grad_attention_param_name': 'encoder_attentions'
     },
-    'gpt2': {
-        'pretrained_model': 'microsoft/DialogRPT-updown',
-        'attention_param_name': 'attentions'
-    },
+    # 'gpt2': {
+    #     'pretrained_model': 'microsoft/DialogRPT-updown',
+    #     'attention_param_name': 'attentions',
+    #     'grad_attention_param_name': 'attentions'
+    # },
     # 'llama2': {
     #   'pretrained_model': 'meta-llama/Llama-2-7b',
     #   'attention_param_name': 'attentions'
     # },
+    # ================ PERSONAL FINETUNED MODELS ================
+    'roberta_sid': {
+        'pretrained_model': 'smiller324/imdb_roberta',
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
+    },
+    'bert_souraj': {
+        'pretrained_model': 'sshourie/test_trainer',
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
+    },
+    'bart_souraj': {
+        'pretrained_model': 'sshourie/BART_small_IMDB',
+        'attention_param_name': 'cross_attentions',
+        'grad_attention_param_name': 'encoder_attentions'
+    },
 }
-
 
 def get_data(name='imdb', sample_perc=None):
   """Load full or sample dataset.
@@ -85,10 +106,6 @@ def get_data(name='imdb', sample_perc=None):
 
   return output_dataset
 
-# def preprocess_function(examples):
-#   """Tokenize text."""
-#   return tokenizer(examples['text'], truncation=True, padding=True)
-
 
 def get_CLS_attention_per_token(model_name, input_text, labels, return_cls_only=False):
   """ Compute average last layer attention from each token to [CLS] token.
@@ -130,10 +147,15 @@ def get_CLS_attention_per_token(model_name, input_text, labels, return_cls_only=
   # Extract model-specific info from model dict:
   pretrained_model_name = MODEL_DICT[model_name]['pretrained_model']
   attention_name = MODEL_DICT[model_name]['attention_param_name']
+  grad_attention_name = MODEL_DICT[model_name]['grad_attention_param_name']
 
   # Instantiate the model:
   model = AutoModelForSequenceClassification.from_pretrained(
-      pretrained_model_name, output_attentions=True)
+      pretrained_model_name,
+      output_attentions=True,
+      num_labels=2,
+      ignore_mismatched_sizes=True
+  )
   # Pre-process the input text, make sure it's padded to the lenght of the
   # longest input string and truncated at the model's max input len
   tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name)
@@ -146,7 +168,9 @@ def get_CLS_attention_per_token(model_name, input_text, labels, return_cls_only=
 
   # Do a backward pass to get gradients.
   for attention in output[attention_name]:
-      attention.retain_grad()
+    attention.retain_grad()
+  for attention in output[grad_attention_name]:
+    attention.retain_grad()
   loss_function = nn.CrossEntropyLoss()
   loss = loss_function(output.logits, label_tensor)
   loss.backward(retain_graph=True)
@@ -156,7 +180,7 @@ def get_CLS_attention_per_token(model_name, input_text, labels, return_cls_only=
   attention = output[attention_name][-1]
   # Get the dL/da gradient for each attention head. Shape:
   #   (batch_size, num_heads, sequence_length, sequence_length).
-  attention_grad = output[attention_name][-1].grad
+  attention_grad = output[grad_attention_name][-1].grad
   # Grab attention weights for the CLS token only (index=0). Shape:
   #   (batch_size, num_heads, sequence_length)
   cls_attention = attention[:, :, 0, :]
@@ -231,6 +255,25 @@ def attention_weights_to_df(tokens, attention_weights):
     )
   return df
 
+def get_top_token_list(tokenized_input, top_tokens_att, i):
+  """Keep tokens whose indices are listed in the topk list.
+
+  Args:
+    tokenized_input (transformers.tokenization_utils_base.BatchEncoding):
+      Tokenized input. For each input, can also extract tokens like this:
+        - input[0].tokens
+    i (int): Index of example in batch.
+
+  Returns:
+    top_token_list (list): List of tokens.
+  """
+  top_token_list = []
+  for (tok_id, tok) in enumerate(tokenized_input[i].tokens):
+    if tok_id in top_tokens_att.indices[i]:
+      # Remove the Ġ character from the token -- only applies for BART.
+      tok = tok.replace("Ġ", "")
+      top_token_list.append(tok)
+  return top_token_list
 
 def print_model_output_stats(
         MODEL_ALIAS, SAMPLE_LABEL, tokenized_input, output,
@@ -267,18 +310,17 @@ def print_model_output_stats(
   predicted_labels = output.logits.argmax(dim=1)
 
   for i in range(batch_size):
-    tokens_att = [tok for (tok_id, tok) in enumerate(
-        tokenized_input[i].tokens) if tok_id in top_tokens_att.indices[i]]
-    high_tokens_att_grad = [tok for (tok_id, tok) in enumerate(
-        tokenized_input[i].tokens) if tok_id in top_tokens_att_grad.indices[i]]
-    low_tokens_att_grad = [tok for (tok_id, tok) in enumerate(
-        tokenized_input[i].tokens) if tok_id in worst_tokens_att_grad.indices[i]]
+    tokens_att = get_top_token_list(tokenized_input, top_tokens_att, i)
+    high_tokens_att_grad = get_top_token_list(tokenized_input, top_tokens_att_grad, i)
+    low_tokens_att_grad = get_top_token_list(tokenized_input, worst_tokens_att_grad, i)
+
     print(f"Example {i+1}: LABEL = {SAMPLE_LABEL[i]} | PREDICTED = {predicted_labels[i]}")
     print(f"  Top Attention Tokens : {', '.join(tokens_att)}")
     print(f"  Top Gradient Tokens  : {', '.join(high_tokens_att_grad)}")
     print(f"  Worst Gradient Tokens: {', '.join(low_tokens_att_grad)}")
 
   print()
+
 
 
 if __name__ == '__main__':
@@ -290,9 +332,11 @@ if __name__ == '__main__':
   imdb = get_data("imdb", 0.05)
 
   # ==== TEST ONE MODEL ====
-  MODEL_ALIAS = 'distilbert'
-  SAMPLE_TEXT = imdb['train']['text'][:4]
-  SAMPLE_LABEL = imdb['train']['label'][:4]
+  MODEL_ALIAS = 'bart_souraj'
+
+  DATA_SIZE = 4
+  SAMPLE_TEXT = imdb['test']['text'][:DATA_SIZE]
+  SAMPLE_LABEL = imdb['test']['label'][:DATA_SIZE]
 
   (tokenized_input, output,
    cls_att_mean, cls_att_grad_mean) = get_CLS_attention_per_token(
@@ -309,10 +353,14 @@ if __name__ == '__main__':
   print_attention_weights(
       tokenized_input[PRINT_INDEX].tokens, cls_att_mean[PRINT_INDEX])
 
+  print_model_output_stats(
+      MODEL_ALIAS, SAMPLE_LABEL, tokenized_input, output, cls_att_mean, cls_att_grad_mean)
+
   print()
   # ==== TEST ALL MODELS ====
-  SAMPLE_TEXT = imdb['train']['text'][:4]
-  SAMPLE_LABEL = imdb['train']['label'][:4]
+  DATA_SIZE = 4
+  SAMPLE_TEXT = imdb['test']['text'][:DATA_SIZE]
+  SAMPLE_LABEL = imdb['test']['label'][:DATA_SIZE]
   for MODEL_ALIAS in MODEL_DICT.keys():
 
     (tokenized_input, output,
@@ -327,8 +375,3 @@ if __name__ == '__main__':
         MODEL_ALIAS, SAMPLE_LABEL, tokenized_input, output, cls_att_mean, cls_att_grad_mean)
 
     print()
-
-
-
-
-
