@@ -199,6 +199,57 @@ def get_CLS_attention_per_token(model_name, input_text, labels, return_cls_only=
   else:
     return tokenized_input, output, cls_attention_mean, cls_attention_grad_mean
 
+def _random_swap(attention_row, num_bits):
+  """Helper function to swap random bits in an attention mask row to 0."""
+  num_cols = attention_row.size(0)
+  rand_indices = torch.randperm(num_cols)[:num_bits]
+  attention_row[rand_indices] = 0
+
+
+def _swap_with_indices(attention_row, swap_indices, num_bits):
+  """Helper function to swap specified bits in an attention mask row to 0."""
+  # Only use the first num_bits indices
+  valid_indices = swap_indices[:num_bits]
+  # Filter out any indices that are out of bounds
+  valid_indices = valid_indices[valid_indices < attention_row.size(0)]
+  attention_row[valid_indices] = 0
+
+
+def disable_attention_mask_bits(
+    attention_tensor,
+    num_bits=10,
+    swap_index_tensor=None
+):
+  """Set specified bits in the attention mask to '0', or random bits if no indices are specified.
+
+  Args:
+    attention_tensor (torch.Tensor): 2D attention mask where each row is a mask.
+    num_bits (int): Number of bits to set to '0' for each mask.
+    swap_index_tensor (torch.Tensor): Optional 2D tensor with the same number of rows as attention_tensor,
+                                      containing indices to swap to '0'.
+
+  Returns:
+    torch.Tensor: Modified 2D attention mask.
+
+  Raises:
+    ValueError: If swap_index_tensor has a different number of rows than attention_tensor.
+  """
+  # Clone the tensor to avoid modifying it in place
+  attention_tensor_copy = attention_tensor.clone()
+
+  if swap_index_tensor is not None:
+    if swap_index_tensor.size(0) != attention_tensor_copy.size(0):
+      raise ValueError(
+        f"swap_index_tensor must have the same number of rows (current: {swap_index_tensor.size(0)}) as attention_tensor (input rows: {attention_tensor_copy.size(0)})")
+    for row in range(attention_tensor_copy.size(0)):
+      _swap_with_indices(
+        attention_tensor_copy[row], swap_index_tensor[row], num_bits)
+  else:
+    for row in range(attention_tensor_copy.size(0)):
+      _random_swap(attention_tensor_copy[row], num_bits)
+
+  return attention_tensor_copy
+
 def print_attention_weights(tokens, attention_weights):
   """For tokens and their attention weights, print each them out on new line.
 
@@ -233,7 +284,6 @@ def print_attention_weights(tokens, attention_weights):
       print(
           f"{tokens[i]:16}| {attention_weights[i]:.4f}   {'x'*attention_weights_x[i]}")
 
-
 def attention_weights_to_df(tokens, attention_weights):
   """Convert tokens and attention weights into DataFrame and display with colored bars.
 
@@ -249,6 +299,7 @@ def attention_weights_to_df(tokens, attention_weights):
     'tokens': tokens,
     'attention': attention_weights.tolist()
     })
+    .query('tokens != "PAD"')
     .style
     # Red, green
     .bar(subset=['attention'], align='mid', color=['#d65f5f', '#5fba7d'])
@@ -321,8 +372,6 @@ def print_model_output_stats(
 
   print()
 
-
-
 if __name__ == '__main__':
 
   np.random.seed(42)
@@ -331,47 +380,53 @@ if __name__ == '__main__':
 
   imdb = get_data("imdb", 0.05)
 
-  # ==== TEST ONE MODEL ====
-  MODEL_ALIAS = 'bart_souraj'
+  # ==== ATTENTION WIEGHTS SWAPPING ====
 
-  DATA_SIZE = 4
+  DATA_SIZE = 1
   SAMPLE_TEXT = imdb['test']['text'][:DATA_SIZE]
   SAMPLE_LABEL = imdb['test']['label'][:DATA_SIZE]
 
-  (tokenized_input, output,
-   cls_att_mean, cls_att_grad_mean) = get_CLS_attention_per_token(
-     MODEL_ALIAS,
-     SAMPLE_TEXT,
-     SAMPLE_LABEL,
-     return_cls_only=False
+  # MODEL_ALIAS = 'yoshitomo-matsubara/bert-large-uncased-sst2'
+  MODEL_ALIAS = 'distilbert'
+  MODEL_NAME = MODEL_DICT[MODEL_ALIAS]['pretrained_model']
+
+  # Instantiate the model:
+  model = AutoModelForSequenceClassification.from_pretrained(
+      MODEL_NAME,
+      output_attentions=True,
+      num_labels=2,
+      ignore_mismatched_sizes=True
   )
+  # Pre-process the input text, make sure it's padded to the lenght of the
+  # longest input string and truncated at the model's max input len
+  tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+  # Pre-process the input text, make sure it's padded to the lenght of the
+  # longest input string and truncated at the model's max input lenght.
+  tokenized_input = tokenizer(SAMPLE_TEXT, return_tensors="pt",
+                              padding=True, truncation=True)
+  # Run inference.
+  output = model(**tokenized_input)
 
-  print(cls_att_mean.shape)
-  print(cls_att_grad_mean.shape)
+  new_mask = disable_attention_mask_bits(
+    tokenized_input.attention_mask,
+    num_bits=50
+    )
+  print(new_mask)
 
-  PRINT_INDEX = 0
-  print_attention_weights(
-      tokenized_input[PRINT_INDEX].tokens, cls_att_mean[PRINT_INDEX])
-
-  print_model_output_stats(
-      MODEL_ALIAS, SAMPLE_LABEL, tokenized_input, output, cls_att_mean, cls_att_grad_mean)
-
-  print()
-  # ==== TEST ALL MODELS ====
-  DATA_SIZE = 4
-  SAMPLE_TEXT = imdb['test']['text'][:DATA_SIZE]
-  SAMPLE_LABEL = imdb['test']['label'][:DATA_SIZE]
-  for MODEL_ALIAS in MODEL_DICT.keys():
-
-    (tokenized_input, output,
-     cls_att_mean, cls_att_grad_mean) = get_CLS_attention_per_token(
+  cls_att_mean, cls_att_grad_mean = get_CLS_attention_per_token(
       MODEL_ALIAS,
       SAMPLE_TEXT,
       SAMPLE_LABEL,
-      return_cls_only=False
+      return_cls_only=True
+  )
+
+  cls_att_mean_top_indices = cls_att_mean.topk(10).indices
+
+  new_mask2 = disable_attention_mask_bits(
+    tokenized_input.attention_mask,
+    num_bits=200,
+    swap_index_tensor=cls_att_mean_top_indices
     )
+  print(new_mask2)
 
-    print_model_output_stats(
-        MODEL_ALIAS, SAMPLE_LABEL, tokenized_input, output, cls_att_mean, cls_att_grad_mean)
-
-    print()
+  print()

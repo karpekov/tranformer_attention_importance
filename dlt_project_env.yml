@@ -12,6 +12,7 @@ dependencies:
   - matplotlib
   - altair
   - plotnine
+  - scikit-learn
   - pip:
     - datasets
     - transformers
