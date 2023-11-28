@@ -86,6 +86,9 @@ class ModelEvaluationExperiment:
           )
       # Save results after each model. Note that this will overwrite the file.
       self.save_results()
+      # Excplicitely delete the attention analysis object to free up memory.
+      if run_attention or run_grad_attention_top or run_grad_attention_bottom:
+        del attention_analysis_obj
 
   def _run_sentiment_analysis_pipe(
       self,
@@ -147,7 +150,6 @@ class ModelEvaluationExperiment:
 
   def get_results(self):
     return pd.DataFrame(self.results)
-
 
 if __name__ == '__main__':
 

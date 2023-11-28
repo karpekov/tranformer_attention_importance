@@ -14,6 +14,7 @@ dependencies:
   - plotnine
   - scikit-learn
   - parameterized
+  - memory-profiler
   - pip:
     - datasets
     - transformers
