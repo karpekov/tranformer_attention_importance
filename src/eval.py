@@ -15,7 +15,6 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import precision_recall_fscore_support
 
-from extract_attention import *
 from data_processing import *
 from data_dict import MODEL_DICT
 
