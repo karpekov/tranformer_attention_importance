@@ -20,7 +20,8 @@ class ModelEvaluationExperiment:
       run_attention=True,
       run_grad_attention_top=True,
       run_grad_attention_bottom=True,
-      **kwargs
+      top_k=50,
+      store_input_output=False
   ):
     """ Run all experiments on all models in the model_dict.
 
@@ -37,19 +38,19 @@ class ModelEvaluationExperiment:
       raise ValueError('No Experiments were specified.')
     for model_alias in self.model_dict.keys():
       print(f'=========================================================')
-      print(f'=====> RUNNING EVALS for {model_alias}')
-      print(f'=========================================================')
+      print(f'===============| RUNNING EVALS for {model_alias}')
+      print(f'---------------------------------------------------------')
       # Run the model and extract attention weights and gradients.
       if run_attention or run_grad_attention_top or run_grad_attention_bottom:
         try:
-          print(f'<===> Running AttentionAnalysis() <===>')
+          print(f'===============| Running AttentionAnalysis() |===========')
           attention_analysis_obj = AttentionAnalysis(
               model_alias,
               self.data_loader,
               model_dict=self.model_dict,
-              **kwargs
           )
-          attention_analysis_obj.run()
+          attention_analysis_obj.run(
+              top_k=top_k, store_input_output=store_input_output)
         except Exception as e:
           print(f'Failed to run attention analysis for {model_alias}')
           print(f"An exception occurred: {e}")
@@ -58,25 +59,23 @@ class ModelEvaluationExperiment:
 
       # Run multiple token drop strategies and evaluate each model separately.
       for tokens_to_drop in range(self.max_token_drop + 1):
-        print(f'tokens_to_drop: {tokens_to_drop}')
+        print(f'=== tokens_to_drop: {tokens_to_drop}')
         if run_random:
           self._run_sentiment_analysis_pipe(
-              model_alias, tokens_to_drop, 'random', **kwargs)
+              model_alias, tokens_to_drop, 'random')
         if run_attention:
           self._run_sentiment_analysis_pipe(
               model_alias,
               tokens_to_drop,
               drop_strategy_name='attention',
-              swap_index_tensor=attention_analysis_obj.topk_attentions,
-              **kwargs
+              swap_index_tensor=attention_analysis_obj.topk_attentions
           )
         if run_grad_attention_top:
           self._run_sentiment_analysis_pipe(
               model_alias,
               tokens_to_drop,
               drop_strategy_name='attention_grad_top',
-              swap_index_tensor=attention_analysis_obj.topk_attentions_grad,
-              **kwargs
+              swap_index_tensor=attention_analysis_obj.topk_attentions_grad
           )
         if run_grad_attention_bottom:
           self._run_sentiment_analysis_pipe(
@@ -84,7 +83,6 @@ class ModelEvaluationExperiment:
               tokens_to_drop,
               drop_strategy_name='attention_grad_bottom',
               swap_index_tensor=attention_analysis_obj.bottomk_attentions_grad,
-              **kwargs
           )
       # Save results after each model. Note that this will overwrite the file.
       self.save_results()
@@ -94,15 +92,13 @@ class ModelEvaluationExperiment:
       model_alias,
       tokens_to_drop,
       drop_strategy_name='no_name',
-      swap_index_tensor=None,
-      **kwargs
+      swap_index_tensor=None
   ):
     """Run the sentiment analysis pipeline on a model."""
     try:
       pipeline = SentimentAnalysisPipeline(
           model_alias=model_alias,
-          model_dict=self.model_dict,
-          **kwargs
+          model_dict=self.model_dict
       )
       metrics = pipeline.evaluate_model(
           self.data_loader,
@@ -168,5 +164,5 @@ if __name__ == '__main__':
 
   experiment = ModelEvaluationExperiment(
       MODEL_DICT, test_loader, max_token_drop=4)
-  experiment.run()
+  experiment.run(top_k=20)
   experiment.save_results('data/experiment_results', append_timestamp=False)
