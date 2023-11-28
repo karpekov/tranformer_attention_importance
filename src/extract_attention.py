@@ -59,7 +59,7 @@ class AttentionAnalysis:
     self.labels = None
     self.predicted_labels = None
 
-  def run(self, top_k=200, store_input_output=False):
+  def run(self, top_k=50, store_input_output=False):
     """Run the model and extract attention weights and gradients.
 
       Args:
