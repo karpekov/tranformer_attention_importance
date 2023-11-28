@@ -6,3 +6,4 @@ models
 *.csv
 /data
 git_helper.txt
+graveyard*

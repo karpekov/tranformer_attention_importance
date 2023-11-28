@@ -13,6 +13,7 @@ dependencies:
   - altair
   - plotnine
   - scikit-learn
+  - parameterized
   - pip:
     - datasets
     - transformers

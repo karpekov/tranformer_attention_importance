@@ -1,3 +1,12 @@
+# Project Description
+[TBA]
+
+# How to run experiments
+[TBA]
+
+# Code structure
+[TBA]
+
 # Environment setup
 To create a working environemnt using conda:
 ```

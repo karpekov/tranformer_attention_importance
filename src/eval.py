@@ -1,43 +1,23 @@
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from datasets import load_dataset
+"""
+Creates SentimentAnalysisPipeline class to run a model and evaluate it on data.
+The pipeline can also flip bits in the attention mask, either randomly or
+based on a tensor of indices.
+
+See usage in '__main__' at the bottom of this file.
+"""
+
 import torch
-from torch.utils.data import DataLoader
+
+from transformers import AutoModelForSequenceClassification
+from transformers import AutoTokenizer
+from datasets import load_dataset
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-from pprint import pprint
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_recall_fscore_support
 
-from utils import *
-
-def prepare_data_loader(
-    name='imdb',
-    split='test',
-    model_dict=MODEL_DICT,
-    sample_size=None,
-    batch_size=16
-):
-  """ Loads and processes a dataset from the HuggingFace library"""
-  dataset = load_dataset(name, split=split)
-  if sample_size:
-    data_size = len(dataset)
-    sample_indices = np.random.choice(data_size, size=sample_size, replace=False)
-    dataset = dataset.select(sample_indices)
-
-  tokenizer = AutoTokenizer.from_pretrained(
-      model_dict['distilbert']['pretrained_model'])
-  dataset = dataset.map(
-    lambda batch: tokenizer(
-      batch['text'],
-      padding='max_length',
-      truncation=True,
-      return_tensors='pt'
-    ),
-    batched=True
-  )
-  dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'label'])
-
-  data_loader = DataLoader(dataset, batch_size=batch_size)
-  return data_loader
-
+from extract_attention import *
+from data_processing import *
+from data_dict import MODEL_DICT
 
 class SentimentAnalysisPipeline:
   def __init__(self, model_alias='distilbert', model_dict=MODEL_DICT, device=None):
@@ -64,7 +44,14 @@ class SentimentAnalysisPipeline:
       num_bits_to_flip=None,
       swap_index_tensor=None
   ):
-    """Evaluates the model on a dataset
+    """Evaluates the model on data. Optionally flips bits in the attention mask.
+
+    If only num_bits_to_flip is specified, random bits will be flipped.
+    If only swap_index_tensor is specified, all indices in the tensor will be
+      flipped.
+    If both num_bits_to_flip and swap_index_tensor are specified, only the
+      first num_bits_to_flip indices in each row of the swap_index_tensor
+      will be flipped.
 
     Args:
       data_loader ([torch.utils.data.DataLoader]): Dataloader to evaluate on.
@@ -106,7 +93,11 @@ class SentimentAnalysisPipeline:
         all_true_labels.extend(labels)
 
     accuracy = accuracy_score(all_true_labels, all_predictions)
-    precision, recall, f1, _ = precision_recall_fscore_support(all_true_labels, all_predictions, average='binary')
+    precision, recall, f1, _ = precision_recall_fscore_support(
+      all_true_labels,
+      all_predictions,
+      average='binary'
+    )
 
     return {
         'accuracy': accuracy,
