@@ -74,7 +74,7 @@ class TestAttentionAnalysis(unittest.TestCase):
     )
 
     # Run the analysis
-    analysis.run(top_k=5)
+    analysis.run(top_k=5, store_input_output=True)
 
     # Assert that the results are non-empty
     self.assertIsNotNone(analysis.cls_attention_means)
