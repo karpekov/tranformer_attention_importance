@@ -63,7 +63,7 @@ class AttentionAnalysis:
     self.labels = None
     self.predicted_labels = None
 
-  @profile
+  # @profile
   def run(self, top_k=50, store_input_output=False):
     """Run the model and extract attention weights and gradients.
 
@@ -140,6 +140,15 @@ class AttentionAnalysis:
       bottomk_attentions_grad.append(bottomk_attention_grad)
       tokenized_inputs.append(batch['input_ids'])
 
+      del output
+      # # Delete the gradients to free up memory.
+      # for attention in output[self.attention_name]:
+      #   # attention.grad.detach_()
+      #   attention.grad = None
+      # for attention in output[self.grad_attention_name]:
+      #   # attention.grad.detach_()
+      #   attention.grad = None
+
     # Store attention results in class attributes:
     self.cls_attention_means = torch.cat(cls_attention_means, dim=0)
     self.cls_attention_grad_means = torch.cat(cls_attention_grad_means, dim=0)
@@ -160,13 +169,13 @@ if __name__ == '__main__':
   torch.manual_seed(42)
   set_seed(42)
 
-  MODEL_ALIAS = 'gpt2'
-  DATA_SIZE = 4
+  MODEL_ALIAS = 'distilbert'
+  DATA_SIZE = 256
   test_loader = prepare_data_loader(sample_size=DATA_SIZE, batch_size=16)
 
   # Usage:
   attn_obj = AttentionAnalysis(MODEL_ALIAS, test_loader)
-  attn_obj.run()
+  attn_obj.run(store_input_output=True)
 
   print('Model: =======', MODEL_ALIAS, '=======')
   print('cls_attention_means:', attn_obj.cls_attention_means.shape)
