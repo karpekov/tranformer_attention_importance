@@ -12,8 +12,8 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 
-from utils import *
-from data_processing import *
+# from utils import *
+from data_processing import prepare_data_loader
 from data_dict import MODEL_DICT
 
 class AttentionAnalysis:

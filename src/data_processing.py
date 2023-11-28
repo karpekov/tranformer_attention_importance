@@ -9,8 +9,6 @@ from transformers import AutoTokenizer
 from datasets import load_dataset
 from datasets import DatasetDict
 
-from extract_attention import *
-from utils import *
 from data_dict import MODEL_DICT
 
 def prepare_data_loader(
