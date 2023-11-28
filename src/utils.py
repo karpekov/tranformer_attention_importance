@@ -175,7 +175,7 @@ if __name__ == '__main__':
 
   # Run Attention Analysis
   attn_obj = AttentionAnalysis(MODEL_ALIAS, test_loader)
-  attn_obj.run()
+  attn_obj.run(store_input_output=True)
 
   attn_obj.cls_attention_means
   attn_obj.tokenized_inputs
