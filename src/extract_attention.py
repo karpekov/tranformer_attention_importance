@@ -42,12 +42,13 @@ class AttentionAnalysis:
     self.model_alias = model_alias
     self.model_name = model_dict[model_alias]['pretrained_model']
     self.data_loader = data_loader
+    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     self.model = AutoModelForSequenceClassification.from_pretrained(
       self.model_name,
       output_attentions=True,
       num_labels=2,
       ignore_mismatched_sizes=True
-    )
+    ).to(self.device)
     self.model.eval()
     self.loss_function = loss_function
     self.attention_name = model_dict[model_alias]['attention_param_name']
@@ -94,15 +95,15 @@ class AttentionAnalysis:
     predicted_label_list = []
 
     for batch in self.data_loader:
-      input_ids = batch['input_ids']
-      attention_mask = batch['attention_mask']
-      labels = batch['label']
+      input_ids = batch['input_ids'].to(self.device)
+      attention_mask = batch['attention_mask'].to(self.device)
+      labels = batch['label'].to(self.device)
       label_list.append(labels)
 
       # Run the model
       output = self.model(input_ids=input_ids, attention_mask=attention_mask)
       predicted_labels = output.logits.argmax(dim=1)
-      predicted_label_list.append(predicted_labels)
+      predicted_label_list.append(predicted_labels.cpu())
 
       # Do a backward pass to get gradients.
       for attention in output[self.attention_name]:
@@ -133,21 +134,15 @@ class AttentionAnalysis:
       bottomk_attention_grad = torch.topk(
           cls_attention_grad_mean, dim=1, k=top_k, largest=False).indices
       # Store results for this batch
-      cls_attention_means.append(cls_attention_mean)
-      cls_attention_grad_means.append(cls_attention_grad_mean)
-      topk_attentions.append(topk_attention)
-      topk_attentions_grad.append(topk_attention_grad)
-      bottomk_attentions_grad.append(bottomk_attention_grad)
-      tokenized_inputs.append(batch['input_ids'])
+      cls_attention_means.append(cls_attention_mean.cpu())
+      cls_attention_grad_means.append(cls_attention_grad_mean.cpu())
+      topk_attentions.append(topk_attention.cpu())
+      topk_attentions_grad.append(topk_attention_grad.cpu())
+      bottomk_attentions_grad.append(bottomk_attention_grad.cpu())
+      tokenized_inputs.append(batch['input_ids'].cpu())
 
-      del output
-      # # Delete the gradients to free up memory.
-      # for attention in output[self.attention_name]:
-      #   # attention.grad.detach_()
-      #   attention.grad = None
-      # for attention in output[self.grad_attention_name]:
-      #   # attention.grad.detach_()
-      #   attention.grad = None
+      del output, attention, attention_grad
+      torch.cuda.empty_cache()
 
     # Store attention results in class attributes:
     self.cls_attention_means = torch.cat(cls_attention_means, dim=0)
@@ -169,8 +164,8 @@ if __name__ == '__main__':
   torch.manual_seed(42)
   set_seed(42)
 
-  MODEL_ALIAS = 'distilbert'
-  DATA_SIZE = 256
+  MODEL_ALIAS = 'tinybert_sid'
+  DATA_SIZE = 20
   test_loader = prepare_data_loader(sample_size=DATA_SIZE, batch_size=16)
 
   # Usage:

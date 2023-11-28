@@ -35,6 +35,11 @@ MODEL_DICT = {
         'attention_param_name': 'attentions',
         'grad_attention_param_name': 'attentions'
     },
+    'tinybert_sid': {
+        'pretrained_model': 'smiller324/imdb_tinybert',
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
+    },
     'bert_souraj': {
         'pretrained_model': 'sshourie/test_trainer',
         'attention_param_name': 'attentions',
