@@ -59,7 +59,7 @@ class AttentionAnalysis:
     self.labels = None
     self.predicted_labels = None
 
-  def run(self, top_k=200):
+  def run(self, top_k=200, store_input_output=False):
     """Run the model and extract attention weights and gradients.
 
       Args:
@@ -141,10 +141,12 @@ class AttentionAnalysis:
     self.topk_attentions = torch.cat(topk_attentions, dim=0)
     self.topk_attentions_grad = torch.cat(topk_attentions_grad, dim=0)
     self.bottomk_attentions_grad = torch.cat(bottomk_attentions_grad, dim=0)
-    # Store info about the input data:
-    self.tokenized_inputs = torch.cat(tokenized_inputs, dim=0)
-    self.labels = torch.cat(label_list, dim=0)
-    self.predicted_labels = torch.cat(predicted_label_list)
+    # Only store these for small sample datasets:
+    if store_input_output:
+      # Store info about the input data:
+      self.tokenized_inputs = torch.cat(tokenized_inputs, dim=0)
+      self.labels = torch.cat(label_list, dim=0)
+      self.predicted_labels = torch.cat(predicted_label_list)
 
 
 if __name__ == '__main__':
