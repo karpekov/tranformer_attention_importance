@@ -2,10 +2,14 @@
 Creates AttentionAnalysis class to run a model and extract attention weights
 and gradients.
 See usage in '__main__' at the bottom of this file.
+
+Run with memory profiler:
+>> python -m memory_profiler extract_attention.py
 """
 
 from transformers import pipeline, set_seed
 from transformers import AutoModelForSequenceClassification
+from memory_profiler import profile
 
 import torch
 import torch.nn as nn
@@ -59,6 +63,7 @@ class AttentionAnalysis:
     self.labels = None
     self.predicted_labels = None
 
+  @profile
   def run(self, top_k=50, store_input_output=False):
     """Run the model and extract attention weights and gradients.
 
