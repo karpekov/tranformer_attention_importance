@@ -41,7 +41,11 @@ class ModelEvaluationExperiment:
       # Run the model and extract attention weights and gradients.
       if run_attention or run_grad_attention_top or run_grad_attention_bottom:
         try:
-          attention_analysis_obj = AttentionAnalysis(model_alias, self.data_loader)
+          attention_analysis_obj = AttentionAnalysis(
+              model_alias,
+              self.data_loader,
+              model_dict=self.model_dict
+          )
           attention_analysis_obj.run()
         except Exception as e:
           print(f'Failed to run attention analysis for {model_alias}')
@@ -86,7 +90,10 @@ class ModelEvaluationExperiment:
   ):
     """Run the sentiment analysis pipeline on a model."""
     try:
-      pipeline = SentimentAnalysisPipeline(model_alias=model_alias)
+      pipeline = SentimentAnalysisPipeline(
+          model_alias=model_alias,
+          model_dict=self.model_dict
+      )
       metrics = pipeline.evaluate_model(
           self.data_loader,
           num_bits_to_flip=tokens_to_drop,
@@ -103,6 +110,7 @@ class ModelEvaluationExperiment:
           'f1': metrics['f1'],
           'status': 'success'
       })
+    # If an error occurs, store the error message in the results.
     except Exception as e:
       self.results.append({
           'model': model_alias,
@@ -122,6 +130,7 @@ class ModelEvaluationExperiment:
       filename='data/experiment_results',
       append_timestamp=True
   ):
+    """Save the results to a csv file."""
     results_df = pd.DataFrame(self.results)
     if not os.path.exists('data'):
       os.makedirs('data')
