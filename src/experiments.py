@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from datetime import datetime
+import torch
 
 from data_dict import MODEL_DICT
 from eval import SentimentAnalysisPipeline
@@ -89,6 +90,7 @@ class ModelEvaluationExperiment:
       # Excplicitely delete the attention analysis object to free up memory.
       if run_attention or run_grad_attention_top or run_grad_attention_bottom:
         del attention_analysis_obj
+      torch.cuda.empty_cache()
 
   def _run_sentiment_analysis_pipe(
       self,
