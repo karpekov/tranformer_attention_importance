@@ -191,7 +191,8 @@ if __name__ == '__main__':
   DATA_SIZE = 50
 
   pipeline = SentimentAnalysisPipeline(model_alias='distilbert')
-  test_loader = prepare_data_loader(sample_size=DATA_SIZE, batch_size=16)
+  test_loader = prepare_data_loader(
+      model_name, sample_size=DATA_SIZE, batch_size=16)
 
   # Mask 50 bits from a tensor of indices.
   # Create a tensor of indices to swap to '0' of size DATA_SIZE x 50:

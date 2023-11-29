@@ -12,9 +12,9 @@ from datasets import DatasetDict
 from data_dict import MODEL_DICT
 
 def prepare_data_loader(
+    model_alias,
     name='imdb',
     split='test',
-    model_alias='distilbert',
     model_dict=MODEL_DICT,
     sample_size=None,
     batch_size=16
