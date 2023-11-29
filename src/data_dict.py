@@ -20,11 +20,11 @@ MODEL_DICT = {
         'attention_param_name': 'cross_attentions',
         'grad_attention_param_name': 'encoder_attentions'
     },
-    # 'gpt2': {
-    #     'pretrained_model': 'microsoft/DialogRPT-updown',
-    #     'attention_param_name': 'attentions',
-    #     'grad_attention_param_name': 'attentions'
-    # },
+    'gpt2': {
+        'pretrained_model': 'microsoft/DialogRPT-updown',
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
+    },
     # 'llama2': {
     #   'pretrained_model': 'meta-llama/Llama-2-7b',
     #   'attention_param_name': 'attentions'
@@ -40,12 +40,12 @@ MODEL_DICT = {
         'attention_param_name': 'attentions',
         'grad_attention_param_name': 'attentions'
     },
-    'bert_souraj': {
+    'bert_suraj': {
         'pretrained_model': 'sshourie/test_trainer',
         'attention_param_name': 'attentions',
         'grad_attention_param_name': 'attentions'
     },
-    'bart_souraj': {
+    'bart_suraj': {
         'pretrained_model': 'sshourie/BART_small_IMDB',
         'attention_param_name': 'cross_attentions',
         'grad_attention_param_name': 'encoder_attentions'

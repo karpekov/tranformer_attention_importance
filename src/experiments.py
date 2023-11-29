@@ -156,17 +156,36 @@ class ModelEvaluationExperiment:
 if __name__ == '__main__':
 
   MODEL_DICT = {
-      'distilbert': {
-          'pretrained_model': 'distilbert-base-uncased-finetuned-sst-2-english',
-          'attention_param_name': 'attentions',
-          'grad_attention_param_name': 'attentions'
-      }
+    # 'bert': {
+    #     'pretrained_model': 'yoshitomo-matsubara/bert-large-uncased-sst2',
+    #     'attention_param_name': 'attentions',
+    #     'grad_attention_param_name': 'attentions'
+    # },
+    # 'distilbert': {
+    #     'pretrained_model': 'distilbert-base-uncased-finetuned-sst-2-english',
+    #     'attention_param_name': 'attentions',
+    #     'grad_attention_param_name': 'attentions'
+    # 'tinybert_sid': {
+    #     'pretrained_model': 'smiller324/imdb_tinybert',
+    #     'attention_param_name': 'attentions',
+    #     'grad_attention_param_name': 'attentions'
+    # },
+    'gpt2': {
+        'pretrained_model': 'microsoft/DialogRPT-updown',
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
+    },
   }
-  DATA_SIZE = 20
 
-  test_loader = prepare_data_loader(sample_size=DATA_SIZE, batch_size=16)
+  DATA_SIZE = 4
+
+  test_loader = prepare_data_loader(
+    model_alias=list(MODEL_DICT.keys())[0],
+    sample_size=DATA_SIZE,
+    batch_size=16
+  )
 
   experiment = ModelEvaluationExperiment(
       MODEL_DICT, test_loader, max_token_drop=4)
-  experiment.run(top_k=20)
+  experiment.run(top_k=30)
   experiment.save_results('data/experiment_results', append_timestamp=False)

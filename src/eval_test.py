@@ -33,8 +33,6 @@ class NamedTensorDataset(Dataset):
 class TestSentimentAnalysisPipeline(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    # # Load a very small sample of the input dataset once for all tests
-    # cls.data_loader = prepare_data_loader(sample_size=10, batch_size=8)
     # Mock the dataset
     cls.texts = [
         "Attention is all you need",

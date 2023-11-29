@@ -164,9 +164,10 @@ if __name__ == '__main__':
   torch.manual_seed(42)
   set_seed(42)
 
-  MODEL_ALIAS = 'tinybert_sid'
-  DATA_SIZE = 20
-  test_loader = prepare_data_loader(sample_size=DATA_SIZE, batch_size=16)
+  MODEL_ALIAS = 'bart'
+  DATA_SIZE = 4
+  test_loader = prepare_data_loader(
+      MODEL_ALIAS, sample_size=DATA_SIZE, batch_size=16)
 
   # Usage:
   attn_obj = AttentionAnalysis(MODEL_ALIAS, test_loader)
