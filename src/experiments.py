@@ -59,7 +59,7 @@ class ModelEvaluationExperiment:
           continue
 
       # Run multiple token drop strategies and evaluate each model separately.
-      for tokens_to_drop in range(self.max_token_drop + 1):
+      for tokens_to_drop in range(0, self.max_token_drop + 1, 2):
         print(f'=== tokens_to_drop: {tokens_to_drop}')
         if run_random:
           self._run_sentiment_analysis_pipe(
