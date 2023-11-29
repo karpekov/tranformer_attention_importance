@@ -45,9 +45,19 @@ MODEL_DICT = {
         'attention_param_name': 'attentions',
         'grad_attention_param_name': 'attentions'
     },
-    'bart_suraj': {
+    'bart_suraj_cross_enc': {
         'pretrained_model': 'sshourie/BART_small_IMDB',
         'attention_param_name': 'cross_attentions',
         'grad_attention_param_name': 'encoder_attentions'
+    },
+    'bart_suraj_cross_cross': {
+        'pretrained_model': 'sshourie/BART_small_IMDB',
+        'attention_param_name': 'cross_attentions',
+        'grad_attention_param_name': 'cross_attentions'
+    },
+    'bart_suraj_dec_dec': {
+        'pretrained_model': 'sshourie/BART_small_IMDB',
+        'attention_param_name': 'decoder_attentions',
+        'grad_attention_param_name': 'decoder_attentions'
     },
 }
