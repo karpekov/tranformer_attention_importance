@@ -161,20 +161,21 @@ if __name__ == '__main__':
     #     'attention_param_name': 'attentions',
     #     'grad_attention_param_name': 'attentions'
     # },
-    # 'distilbert': {
-    #     'pretrained_model': 'distilbert-base-uncased-finetuned-sst-2-english',
-    #     'attention_param_name': 'attentions',
-    #     'grad_attention_param_name': 'attentions'
+    'distilbert': {
+        'pretrained_model': 'distilbert-base-uncased-finetuned-sst-2-english',
+        'attention_param_name': 'attentions',
+        'grad_attention_param_name': 'attentions'
+    },
     # 'tinybert_sid': {
     #     'pretrained_model': 'smiller324/imdb_tinybert',
     #     'attention_param_name': 'attentions',
     #     'grad_attention_param_name': 'attentions'
     # },
-    'gpt2': {
-        'pretrained_model': 'microsoft/DialogRPT-updown',
-        'attention_param_name': 'attentions',
-        'grad_attention_param_name': 'attentions'
-    },
+    # 'gpt2': {
+    #     'pretrained_model': 'microsoft/DialogRPT-updown',
+    #     'attention_param_name': 'attentions',
+    #     'grad_attention_param_name': 'attentions'
+    # },
   }
 
   DATA_SIZE = 4
@@ -187,5 +188,5 @@ if __name__ == '__main__':
 
   experiment = ModelEvaluationExperiment(
       MODEL_DICT, test_loader, max_token_drop=4)
-  experiment.run(top_k=30)
+  experiment.run(top_k=2)
   experiment.save_results('data/experiment_results', append_timestamp=False)
