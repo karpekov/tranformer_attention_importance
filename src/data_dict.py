@@ -60,4 +60,9 @@ MODEL_DICT = {
         'attention_param_name': 'decoder_attentions',
         'grad_attention_param_name': 'decoder_attentions'
     },
+    'bart_suraj_enc_enc': {
+        'pretrained_model': 'sshourie/BART_small_IMDB',
+        'attention_param_name': 'encoder_attentions',
+        'grad_attention_param_name': 'encoder_attentions'
+    },
 }
