@@ -37,15 +37,18 @@ class AttentionAnalysis:
       model_alias,
       data_loader,
       model_dict=MODEL_DICT,
-      loss_function=nn.CrossEntropyLoss()
+      loss_function=nn.CrossEntropyLoss(),
+      output_hidden_states=False
   ):
     self.model_alias = model_alias
     self.model_name = model_dict[model_alias]['pretrained_model']
     self.data_loader = data_loader
     self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    self.output_hidden_states = output_hidden_states
     self.model = AutoModelForSequenceClassification.from_pretrained(
       self.model_name,
       output_attentions=True,
+      output_hidden_states=output_hidden_states,
       num_labels=2,
       ignore_mismatched_sizes=True
     ).to(self.device)
@@ -63,6 +66,7 @@ class AttentionAnalysis:
     self.tokenized_inputs = None
     self.labels = None
     self.predicted_labels = None
+    self.hidden_states = None
 
   # @profile
   def run(self, top_k=50, store_input_output=False):
@@ -93,6 +97,7 @@ class AttentionAnalysis:
     tokenized_inputs = []
     label_list = []
     predicted_label_list = []
+    hidden_state_list = []
 
     for batch in self.data_loader:
       input_ids = batch['input_ids'].to(self.device)
@@ -113,6 +118,9 @@ class AttentionAnalysis:
       loss = self.loss_function(output.logits, labels)
       loss.backward(retain_graph=True)
 
+      if self.output_hidden_states:
+        # Grab last hidden state:
+        last_hidden_state = output.hidden_states[-1]
       # Grab all attention heads from the last layer.
       attention = output[self.attention_name][-1]
       # Get the dL/da gradient for each attention head.
@@ -140,6 +148,8 @@ class AttentionAnalysis:
       topk_attentions_grad.append(topk_attention_grad.cpu())
       bottomk_attentions_grad.append(bottomk_attention_grad.cpu())
       tokenized_inputs.append(batch['input_ids'].cpu())
+      if self.output_hidden_states:
+        hidden_state_list.append(last_hidden_state.cpu())
 
       del output, attention, attention_grad
       torch.cuda.empty_cache()
@@ -156,6 +166,8 @@ class AttentionAnalysis:
       self.tokenized_inputs = torch.cat(tokenized_inputs, dim=0)
       self.labels = torch.cat(label_list, dim=0)
       self.predicted_labels = torch.cat(predicted_label_list)
+    if self.output_hidden_states:
+      self.hidden_states = torch.cat(hidden_state_list, dim=0)
 
 
 if __name__ == '__main__':
@@ -164,13 +176,13 @@ if __name__ == '__main__':
   torch.manual_seed(42)
   set_seed(42)
 
-  MODEL_ALIAS = 'bart'
+  MODEL_ALIAS = 'distilbert'
   DATA_SIZE = 4
   test_loader = prepare_data_loader(
       MODEL_ALIAS, sample_size=DATA_SIZE, batch_size=16)
 
   # Usage:
-  attn_obj = AttentionAnalysis(MODEL_ALIAS, test_loader)
+  attn_obj = AttentionAnalysis(MODEL_ALIAS, test_loader, output_hidden_states=True)
   attn_obj.run(store_input_output=True)
 
   print('Model: =======', MODEL_ALIAS, '=======')
