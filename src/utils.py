@@ -7,8 +7,10 @@ import torch
 import torch.nn as nn
 import pandas as pd
 import numpy as np
+import pickle
 
 from transformers import set_seed
+from datetime import datetime
 
 from extract_attention import *
 from data_processing import *
@@ -179,7 +181,13 @@ def print_model_output_stats(
 
   return output_list
 
-def get_token_embeddings(attention_analysis_obj, tokenizer, topk=5):
+def get_token_embeddings(
+    attention_analysis_obj,
+    tokenizer,
+    topk=5,
+    torch_save=True
+  ):
+  """Extract top-k tokens and their embeddings from attention analysis object."""
 
   # Extract relevant attributes from attention analysis object.
   tokenized_inputs = attention_analysis_obj.tokenized_inputs
@@ -221,16 +229,96 @@ def get_token_embeddings(attention_analysis_obj, tokenizer, topk=5):
   top_vectors_att = top_vectors_att.reshape(-1, hidden_dim_size)
   top_vectors_att_grad = top_vectors_att_grad.reshape(-1, hidden_dim_size)
 
-  return repeated_labels, top_tokens_att, top_tokens_att_grad, top_vectors_att, top_vectors_att_grad
+  if torch_save:
+    current_timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+    path = 'data/embedding_data/'
+
+    torch.save({
+      'repeated_labels': repeated_labels,
+      'top_vectors_att': top_vectors_att,
+      'top_vectors_att_grad': top_vectors_att_grad
+      }, path + f'/tensors_{current_timestamp}.pt')
+
+    with open(path + f'/top_tokens_att_{current_timestamp}.pkl', 'wb') as file:
+      pickle.dump(top_tokens_att, file)
+    with open(path + f'/top_tokens_att_grad_{current_timestamp}.pkl', 'wb') as file:
+      pickle.dump(top_tokens_att_grad, file)
+  else:
+    return repeated_labels, top_tokens_att, top_tokens_att_grad, \
+      top_vectors_att, top_vectors_att_grad
+
+def concatenate_embeddings():
+  """[TEMP FUNCTION] Concatenate tensors and token lists from multiple runs."""
+  tensor_file_list = [
+      'tensors_20231130_0048.pt',
+      'tensors_20231130_0052.pt',
+      'tensors_20231130_0057.pt',
+      'tensors_20231130_0101.pt',
+  ]
+
+  top_tokens_file_list = [
+      'top_tokens_att_20231130_0048.pkl',
+      'top_tokens_att_20231130_0052.pkl',
+      'top_tokens_att_20231130_0057.pkl',
+      'top_tokens_att_20231130_0101.pkl',
+  ]
+
+  top_tokens_grad_file_list = [
+      'top_tokens_att_grad_20231130_0048.pkl',
+      'top_tokens_att_grad_20231130_0052.pkl',
+      'top_tokens_att_grad_20231130_0057.pkl',
+      'top_tokens_att_grad_20231130_0101.pkl',
+  ]
+
+  path = 'data/embedding_data/'
+
+  repeated_labels = []
+  top_vectors_att = []
+  top_vectors_att_grad = []
+  top_tokens = []
+  top_tokens_grad = []
+
+  for tensor_file in tensor_file_list:
+    loaded_tensors = torch.load(path + tensor_file)
+    repeated_labels.append(loaded_tensors['repeated_labels'])
+    top_vectors_att.append(loaded_tensors['top_vectors_att'])
+    top_vectors_att_grad.append(loaded_tensors['top_vectors_att_grad'])
+
+  for top_tokens_file in top_tokens_file_list:
+    with open(path + top_tokens_file, 'rb') as file:
+      top_tokens.append(pickle.load(file))
+
+  for top_tokens_grad_file in top_tokens_grad_file_list:
+    with open(path + top_tokens_grad_file, 'rb') as file:
+      top_tokens_grad.append(pickle.load(file))
+
+  repeated_labels = torch.cat(repeated_labels)
+  top_vectors_att = torch.cat(top_vectors_att)
+  top_vectors_att_grad = torch.cat(top_vectors_att_grad)
+  top_tokens = [token for sublist in top_tokens for token in sublist]
+  top_tokens_grad = [token for sublist in top_tokens_grad for token in sublist]
+
+  print('CONCATENATED TENSORS, now saving...')
+  print(f'Final Shape: {top_vectors_att.shape}')
+  torch.save({
+    'repeated_labels': repeated_labels,
+    'top_vectors_att': top_vectors_att,
+    'top_vectors_att_grad': top_vectors_att_grad
+    }, path + f'/tensors_final.pt')
+
+  with open(path + f'/top_tokens_att_final.pkl', 'wb') as file:
+    pickle.dump(top_tokens, file)
+  with open(path + f'/top_tokens_att_grad_final.pkl', 'wb') as file:
+    pickle.dump(top_tokens_grad, file)
 
 
 if __name__ == '__main__':
-  np.random.seed(42)
-  torch.manual_seed(42)
-  set_seed(42)
+  np.random.seed(39)
+  torch.manual_seed(39)
+  set_seed(39)
 
   MODEL_ALIAS = 'distilbert'
-  DATA_SIZE = 32
+  DATA_SIZE = 128
 
   # Load Data
   test_loader = prepare_data_loader(
@@ -249,20 +337,19 @@ if __name__ == '__main__':
   attn_obj.tokenized_inputs
 
   # Get top tokens and embeddings
-  repeated_labels, top_tokens_att, top_tokens_att_grad, top_vectors_att, top_vectors_att_grad = get_token_embeddings(
-      attn_obj, tokenizer)
-  print(top_vectors_att.shape)
+  get_token_embeddings(attn_obj, tokenizer)
+  # concatenate_embeddings()
 
-  # # 1 Sample Output
-  # tokens_1d = tokenizer.convert_ids_to_tokens(attn_obj.tokenized_inputs[0])
-  # att_weights_1d = attn_obj.cls_attention_means[0]
+  # 1 Sample Output
+  tokens_1d = tokenizer.convert_ids_to_tokens(attn_obj.tokenized_inputs[0])
+  att_weights_1d = attn_obj.cls_attention_means[0]
 
-  # print_attention_weights(tokens_1d, att_weights_1d)
-  # attention_weights_to_df(tokens_1d, att_weights_1d)
-  # example_list = print_model_output_stats(
-  #   attn_obj, tokenizer, top_token_count=20,
-  #   num_examples_to_print=32, print_to_stdout=False)
+  print_attention_weights(tokens_1d, att_weights_1d)
+  attention_weights_to_df(tokens_1d, att_weights_1d)
+  example_list = print_model_output_stats(
+    attn_obj, tokenizer, top_token_count=20,
+    num_examples_to_print=32, print_to_stdout=False)
 
-  # # print(example_list)
-  # example_df = pd.DataFrame(example_list)
-  # example_df.to_csv('data/sample_examples_with_top_attention_tokens.csv', index=False)
+  # print(example_list)
+  example_df = pd.DataFrame(example_list)
+  example_df.to_csv('data/sample_examples_with_top_attention_tokens.csv', index=False)
