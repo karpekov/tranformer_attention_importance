@@ -182,7 +182,7 @@ def print_model_output_stats(
 def get_token_embeddings(attention_analysis_obj, tokenizer, topk=5):
 
   # Extract relevant attributes from attention analysis object.
-#  tokenized_inputs = attention_analysis_obj.tokenized_inputs
+  tokenized_inputs = attention_analysis_obj.tokenized_inputs
   labels = attention_analysis_obj.labels
   predicted_labels = attention_analysis_obj.predicted_labels
   hidden_states = attention_analysis_obj.hidden_states
