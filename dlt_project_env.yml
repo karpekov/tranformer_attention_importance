@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.8
+  - python=3.9
   - pip
   - pytest
   - numpy
@@ -14,8 +14,11 @@ dependencies:
   - plotnine
   - scikit-learn
   - parameterized
-  - memory-profiler
+  - memory_profiler
   - pip:
     - datasets
     - transformers
     - accelerate
+    - selenium
+    - vl-convert-python
+    - git+https://github.com/google/kinda-tidy
