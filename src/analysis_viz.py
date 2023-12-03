@@ -7,8 +7,7 @@ import numpy as np
 
 import altair as alt
 from plotnine import *
-# from kinda_tidy import *
-import kinda_tidy
+from kinda_tidy import *
 
 
 def alt_horizontal_line(
