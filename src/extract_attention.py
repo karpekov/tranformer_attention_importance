@@ -111,10 +111,10 @@ class AttentionAnalysis:
       predicted_label_list.append(predicted_labels.cpu())
 
       # Do a backward pass to get gradients.
-      for attention in output[self.attention_name]:
-        attention.retain_grad()
-      for attention in output[self.grad_attention_name]:
-        attention.retain_grad()
+      # for attention in output[self.attention_name]:
+      #   attention.retain_grad()
+      # for attention in output[self.grad_attention_name]:
+      #   attention.retain_grad()
       loss = self.loss_function(output.logits, labels)
       loss.backward(retain_graph=True)
 

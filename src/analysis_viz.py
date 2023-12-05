@@ -225,7 +225,7 @@ def plot_all_drop_strategies_for_all_models(
 
   chart = ((temp_df
     .alt_chart(
-        title=title,
+        title=f'{title_annotation} | {title}',
         height=400,
         width=500
     )
