@@ -6,5 +6,6 @@ models
 *.csv
 /data
 /offline_charts
+# /report
 git_helper.txt
 graveyard*
