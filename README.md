@@ -16,6 +16,9 @@
 # Code structure
 [TBA]
 
+# Links:
+COLAB: https://colab.research.google.com/drive/1xrkygGg2khLDo7yez_J6MNUuPOhbooP7#
+
 # Environment setup
 To create a working environemnt using conda:
 ```

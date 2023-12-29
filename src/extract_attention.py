@@ -68,6 +68,7 @@ class AttentionAnalysis:
     self.predicted_labels = None
     self.hidden_states = None
 
+  # Uncomment the next line to run memory profiler:
   # @profile
   def run(self, top_k=50, store_input_output=False):
     """Run the model and extract attention weights and gradients.
